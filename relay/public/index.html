@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#100807">
+    <meta name="referrer" content="no-referrer">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="crookcooked">
+    <title>crookcooked</title>
+    <link rel="icon" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="app.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <strong>crookcooked</strong>
+      <span class="connection" data-connection>offline</span>
+    </header>
+
+    <main>
+      <section class="card unpaired" data-unpaired hidden>
+        <h1>Scan the code on your Mac</h1>
+        <p>Open crookcooked on your Mac, then point your iPhone's Camera app at the QR code and tap the link. That's it — nothing to install.</p>
+      </section>
+
+      <section class="card status" data-paired hidden>
+        <p class="eyebrow">your mac</p>
+        <h1 data-status>waiting for mac</h1>
+        <p class="detail" data-peer>Connecting…</p>
+        <div class="actions">
+          <button class="primary" data-action="toggle-arm" disabled>Arm</button>
+        </div>
+        <p class="verify">verify code <strong data-verify>——</strong><span>must match your Mac</span></p>
+      </section>
+
+      <section class="card" data-paired hidden>
+        <div class="row">
+          <p class="eyebrow">camera</p>
+          <div class="buttons">
+            <button data-action="toggle-stream" disabled>Start live view</button>
+            <button data-action="snapshot" disabled>Snapshot</button>
+          </div>
+        </div>
+        <div class="frame">
+          <img data-frame alt="Latest camera frame from your Mac" hidden>
+          <p data-frame-empty>No camera frame yet.</p>
+        </div>
+      </section>
+
+      <section class="card" data-clip hidden>
+        <p class="eyebrow">latest evidence clip</p>
+        <video data-clip-video controls playsinline></video>
+        <a class="download" data-clip-download download="crookcooked-evidence.mov">Save clip</a>
+      </section>
+
+      <section class="card" data-paired hidden>
+        <p class="eyebrow">alerts</p>
+        <ol class="alerts" data-alerts></ol>
+        <p class="empty" data-alerts-empty>No alerts yet. Keep this page open while your Mac is armed.</p>
+      </section>
+
+      <p class="footnote" data-paired hidden>
+        Camera evidence is decrypted on this phone; the relay only sees ciphertext.
+        Add this page to your Home Screen to reopen it quickly.
+        <button class="link" data-action="forget">Forget this Mac</button>
+      </p>
+    </main>
+
+    <div class="alarm" data-alarm hidden role="alert">
+      <strong data-alarm-title>Alert</strong>
+      <button data-action="dismiss-alarm">Dismiss</button>
+    </div>
+  </body>
+</html>

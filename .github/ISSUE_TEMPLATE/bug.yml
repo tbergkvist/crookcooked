@@ -1,0 +1,30 @@
+name: Bug report
+description: Report reproducible incorrect behavior
+body:
+  - type: markdown
+    attributes:
+      value: Do not post pairing secrets, evidence, tokens, or security vulnerabilities here. Use the private security report for vulnerabilities.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: macOS or iOS version
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include minimal steps, expected behavior, and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Remove secrets, device names, evidence, and personal data.
