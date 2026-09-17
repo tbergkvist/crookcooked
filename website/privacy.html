@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#f23e32">
     <meta name="description" content="Privacy information for crookcooked.">
@@ -23,24 +25,23 @@
 
     <main class="legal" id="main">
       <h1>Privacy.</h1>
-      <p class="legal-updated">Updated 16 September 2026</p>
+      <p class="legal-updated">Updated 17 September 2026</p>
 
       <h2>This website</h2>
       <p>The project website has no analytics, cookies, advertising, account system, or third-party scripts. Its hosting provider may retain ordinary request logs under that provider's own policy.</p>
 
-      <h2>The apps</h2>
+      <h2>The app and phone page</h2>
       <ul>
-        <li>Camera scene and face-direction analysis happen on the Mac. There is no identity recognition or cloud vision.</li>
+        <li>Movement and face detection happen on the Mac. There is no identity recognition or cloud vision.</li>
+        <li>While armed, a photo of anyone who looks at the Mac is shown on its lock screen and sent to your connected phone. That photo is deleted from the Mac's wallpaper folder when you disarm.</li>
         <li>The microphone is never captured.</li>
-        <li>Camera evidence is encrypted on the Mac before relay transport.</li>
-        <li>The pairing secret is stored in Apple Keychain on the Mac, and in the browser storage of the phone that scanned the code. It travels in the link's <code>#</code> fragment, which browsers do not send to the relay.</li>
+        <li>Alerts, photos, video clips, and commands travel only between your Mac and your iPhone over the local network, encrypted with the secret in the pairing QR code. No crookcooked server or third party is involved.</li>
+        <li>The pairing secret is stored on the Mac in a file only your user account can read, and in the browser storage of the phone that scanned the code. It travels in the link's <code>#</code> fragment, which browsers do not send over the network.</li>
+        <li>Evidence clips are saved on the Mac in <code>~/Library/Application Support/crookcooked/Evidence</code>. Recent alerts are kept in memory until the app quits.</li>
       </ul>
 
-      <h2>The self-hosted relay</h2>
-      <p>The relay cannot decrypt camera evidence and does not receive the pairing secret. It does process an opaque room identifier, connection metadata, status, event type, and optional APNs device tokens. It also serves the phone web page, which loads no third-party code. Retained status and encrypted evidence are held in memory for up to one hour after both clients disconnect.</p>
-
       <h2>Your responsibility</h2>
-      <p>You choose where the software and relay run. Camera and recording laws vary; use evidence capture only where lawful and provide any notice your location requires.</p>
+      <p>You choose where the software runs and who can scan its code. Camera and recording laws vary; use evidence capture only where lawful and provide any notice your location requires.</p>
     </main>
 
     <footer>

@@ -101,6 +101,9 @@ struct DashboardView: View {
 
             Spacer(minLength: 20)
 
+            WatchingBlob(status: model.status, color: CrookTheme.red)
+                .padding(.trailing, 8)
+
             VStack(alignment: .trailing, spacing: 11) {
                 Button(action: performPrimaryAction) {
                     HStack(spacing: 10) {
@@ -164,14 +167,14 @@ struct DashboardView: View {
 
             VStack(spacing: 3) {
                 settingRow(
-                    "camera movement",
-                    detail: "Detect sustained scene changes",
+                    "moved",
+                    detail: "Alarm when the camera view shifts because the Mac moved",
                     icon: "camera.metering.matrix",
                     isOn: $model.configuration.cameraMovementDetection
                 )
                 settingRow(
-                    "attention warning",
-                    detail: "React when someone faces the Mac",
+                    "lock screen mugshot",
+                    detail: "Show whoever looks at the Mac their photo. Never sounds the alarm",
                     icon: "eye.fill",
                     isOn: $model.configuration.faceAttentionWarning
                 )
@@ -183,7 +186,7 @@ struct DashboardView: View {
                 )
                 settingRow(
                     "lock screen avatar",
-                    detail: "The mark watches and blinks while armed",
+                    detail: "Show the crookcooked mark on the lock screen",
                     icon: "eye.circle.fill",
                     isOn: $model.configuration.lockScreenAvatar
                 )
@@ -201,7 +204,7 @@ struct DashboardView: View {
                     Text("audible alarm")
                         .font(.system(size: 13, weight: .bold))
                     Text(model.configuration.audibleAlarm
-                         ? "On. Sounds only after a confirmed trigger."
+                         ? "On. At full volume, only after touching, moving, or unplugging."
                          : "Quiet mode. Evidence still records and your iPhone is still alerted.")
                         .font(.system(size: 11))
                         .foregroundStyle(CrookTheme.muted)
@@ -229,14 +232,14 @@ struct DashboardView: View {
         panel {
             HStack(alignment: .center, spacing: 11) {
                 panelHeader(
-                    model.isPhonePaired ? "iphone paired" : "pair your iphone",
-                    subtitle: model.isPhonePaired ? "encrypted evidence relay" : "scan once — takes a few seconds",
-                    icon: model.isPhonePaired ? "checkmark.shield.fill" : "qrcode"
+                    model.isPhoneConnected ? "iphone connected" : "connect your iphone",
+                    subtitle: model.isPhoneConnected ? "encrypted, over your local network" : "scan once with the camera app — nothing to install",
+                    icon: model.isPhoneConnected ? "checkmark.shield.fill" : "qrcode"
                 )
 
                 Spacer()
 
-                if model.isPhonePaired {
+                if model.isPhoneConnected {
                     Button(showPairingDetail ? "hide code" : "show code") {
                         showPairingDetail.toggle()
                     }
@@ -244,7 +247,7 @@ struct DashboardView: View {
                 }
             }
 
-            if !model.isPhonePaired || showPairingDetail {
+            if !model.isPhoneConnected || showPairingDetail {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 22) {
                         pairingQR
@@ -256,20 +259,22 @@ struct DashboardView: View {
                     }
                 }
             } else {
-                Label("Evidence will reach your iPhone.", systemImage: "iphone.radiowaves.left.and.right")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(CrookTheme.muted)
+                Label(
+                    model.connectedPhones == 1 ? "1 phone is watching this Mac." : "\(model.connectedPhones) phones are watching this Mac.",
+                    systemImage: "iphone.radiowaves.left.and.right"
+                )
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(CrookTheme.muted)
             }
         }
     }
 
     private var pairingQR: some View {
         VStack(spacing: 9) {
-            if model.pairingPayload.isReachableFromPhone {
-                QRCodeView(payload: model.pairingPayload.encoded, size: 178)
+            if let link = model.pairingLink {
+                QRCodeView(payload: link, size: 178)
             } else {
-                // A loopback relay would give the phone a link it can never open.
-                Label("Set a relay address your iPhone can reach to show the code.", systemImage: "exclamationmark.triangle.fill")
+                Label("Connect this Mac to Wi-Fi to show the code.", systemImage: "wifi.exclamationmark")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(CrookTheme.red)
                     .multilineTextAlignment(.center)
@@ -291,8 +296,8 @@ struct DashboardView: View {
     private var pairingInstructions: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 7) {
-                pairingStep(1, "Open the Camera app on your iPhone.")
-                pairingStep(2, "Point it at this code and tap the link.")
+                pairingStep(1, "Join the same Wi-Fi as this Mac.")
+                pairingStep(2, "Point the iPhone Camera app at this code and tap the link.")
                 pairingStep(3, "Check both screens show the same number.")
             }
 
@@ -308,36 +313,27 @@ struct DashboardView: View {
 
                 Spacer()
 
-                Label(model.relayState.lowercased(), systemImage: "circle.fill")
+                Label(model.isPhoneConnected ? "phone connected" : "waiting for phone", systemImage: "circle.fill")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(relayTone)
+                    .foregroundStyle(model.isPhoneConnected ? CrookTheme.acidDark : CrookTheme.muted)
             }
 
             Divider().overlay(CrookTheme.line)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("relay address")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundStyle(CrookTheme.muted)
-                TextField("wss://relay.example.com", text: $model.configuration.relayURL)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11, design: .monospaced))
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 9)
-                    .background(CrookTheme.canvas, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(CrookTheme.line, lineWidth: 1)
-                    }
-            }
+            Text("Page won\u{2019}t load? Some caf\u{e9} and hotel Wi-Fi keeps devices apart. Turn on Personal Hotspot on the iPhone, join it from this Mac, and scan the new code.")
+                .font(.system(size: 10))
+                .foregroundStyle(CrookTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 9) {
-                Button("copy pairing link") { model.copyPairingLink() }
+                Button("copy link") { model.copyPairingLink() }
                     .buttonStyle(CrookSecondaryButtonStyle())
-                Button("regenerate", role: .destructive) { model.regeneratePairingSecret() }
+                    .disabled(model.pairingLink == nil)
+                Button("new code", role: .destructive) { model.regeneratePairingSecret() }
                     .buttonStyle(.plain)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(CrookTheme.red)
+                    .help("Disconnects every paired phone")
                 Spacer()
             }
         }
@@ -509,7 +505,7 @@ struct DashboardView: View {
         HStack(alignment: .top, spacing: 9) {
             Image(systemName: "info.circle")
                 .foregroundStyle(CrookTheme.red)
-            Text("MacBooks expose no supported accelerometer API. Movement uses camera scene change plus input, USB, and power signals. Authentication stays inside Apple’s lock screen; crookcooked refuses to arm unless macOS confirms it.")
+            Text("MacBooks expose no supported accelerometer API, so movement is detected by the whole camera view shifting. Someone only looking at the Mac never sets off the alarm. Authentication stays inside Apple’s lock screen; crookcooked refuses to arm unless macOS confirms it.")
                 .font(.system(size: 10))
                 .foregroundStyle(CrookTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -579,34 +575,6 @@ struct DashboardView: View {
         .padding(.vertical, 7)
     }
 
-    private func readinessItem(_ title: String, detail: String, icon: String, tone: Color) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-                .frame(width: 29, height: 29)
-                .foregroundStyle(tone)
-                .background(tone.opacity(0.1), in: Circle())
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                Text(detail)
-                    .font(.system(size: 9))
-                    .foregroundStyle(CrookTheme.muted)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 8)
-
-            Circle()
-                .fill(tone)
-                .frame(width: 7, height: 7)
-                .padding(.top, 5)
-        }
-        .padding(11)
-        .background(CrookTheme.canvas.opacity(0.75), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-    }
-
     private var statusAccent: Color {
         switch model.status {
         case .disarmed: return .white.opacity(0.55)
@@ -632,9 +600,9 @@ struct DashboardView: View {
         case .arming:
             return "Preparing sensors and locking through macOS. You can cancel before the countdown ends."
         case .armed:
-            return "The Mac is locked and its enabled signals are watching for interference."
+            return model.readiness?.summary ?? "The Mac is locked and its enabled signals are watching for interference."
         case .triggered:
-            return "A confirmed signal fired. Evidence and status are being sent to the paired iPhone when available."
+            return "A confirmed signal fired. Evidence and status are being sent to connected phones."
         }
     }
 
@@ -677,10 +645,6 @@ struct DashboardView: View {
 
     private var inputTone: Color {
         tone(for: model.inputMonitoringState, positive: ["ready"], negative: ["required", "denied"])
-    }
-
-    private var relayTone: Color {
-        tone(for: model.relayState, positive: ["connected", "paired"], negative: ["offline", "error", "invalid", "enter"])
     }
 
     private func tone(for value: String, positive: [String], negative: [String]) -> Color {

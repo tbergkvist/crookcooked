@@ -21,7 +21,7 @@ public enum ThreatKind: String, Codable, CaseIterable, Sendable {
         case .keyboardOrPointer: return "Keyboard or pointer activity"
         case .powerDisconnected: return "Power adapter disconnected"
         case .usbAttached: return "USB device attached"
-        case .cameraMovement: return "Camera detected movement"
+        case .cameraMovement: return "Mac was moved"
         case .remoteRequest: return "Remote trigger"
         case .manualTest: return "Test trigger"
         }
@@ -44,6 +44,8 @@ public struct CrookcookedEvent: Identifiable, Codable, Hashable, Sendable {
     public let occurredAt: Date
     public let detail: String
     public let score: Int
+    /// The JPEG still captured when the event fired. The whole message it travels
+    /// in is sealed, so this is not separately encrypted.
     public var evidenceBase64: String?
 
     public init(
@@ -71,7 +73,6 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
     public var cameraMovementDetection: Bool
     public var faceAttentionWarning: Bool
     public var lockScreenAvatar: Bool
-    public var relayURL: String
     public var pairingSecret: String
 
     public init(
@@ -82,7 +83,6 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
         cameraMovementDetection: Bool = true,
         faceAttentionWarning: Bool = true,
         lockScreenAvatar: Bool = true,
-        relayURL: String = "ws://127.0.0.1:8787",
         pairingSecret: String = PairingSecret.generate()
     ) {
         self.audibleAlarm = audibleAlarm
@@ -92,7 +92,6 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
         self.cameraMovementDetection = cameraMovementDetection
         self.faceAttentionWarning = faceAttentionWarning
         self.lockScreenAvatar = lockScreenAvatar
-        self.relayURL = relayURL
         self.pairingSecret = pairingSecret
     }
 
@@ -104,7 +103,6 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
         case cameraMovementDetection
         case faceAttentionWarning
         case lockScreenAvatar
-        case relayURL
         case pairingSecret
     }
 
@@ -117,7 +115,6 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
         cameraMovementDetection = try values.decodeIfPresent(Bool.self, forKey: .cameraMovementDetection) ?? true
         faceAttentionWarning = try values.decodeIfPresent(Bool.self, forKey: .faceAttentionWarning) ?? true
         lockScreenAvatar = try values.decodeIfPresent(Bool.self, forKey: .lockScreenAvatar) ?? true
-        relayURL = try values.decodeIfPresent(String.self, forKey: .relayURL) ?? "ws://127.0.0.1:8787"
         pairingSecret = try values.decodeIfPresent(String.self, forKey: .pairingSecret) ?? ""
     }
 
@@ -131,31 +128,37 @@ public struct CrookcookedConfiguration: Codable, Equatable, Sendable {
 
 public enum PairingSecret {
     private static let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+    public static let minimumLength = 8
 
     public static func generate(length: Int = 16) -> String {
-        String((0..<max(8, length)).map { _ in alphabet.randomElement()! })
+        String((0..<max(minimumLength, length)).map { _ in alphabet.randomElement()! })
     }
 
+    /// Six digits both screens show so the owner can confirm they paired the right Mac.
     public static func displayCode(from secret: String) -> String {
         let scalars = secret.unicodeScalars.map(\.value)
         let value = scalars.reduce(UInt64(5381)) { (($0 << 5) &+ $0) &+ UInt64($1) }
         return String(format: "%06llu", value % 1_000_000)
     }
 
-    public static func roomID(from secret: String) -> String {
-        let digest = SHA256.hash(data: Data(("crookcooked-room:" + secret).utf8))
+    /// Gates the event stream and clip download. It is derived one-way, so seeing
+    /// it on the network reveals neither the secret nor the encryption key.
+    public static func accessToken(from secret: String) -> String {
+        let digest = SHA256.hash(data: Data(("crookcooked-access:" + secret).utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
 
-public enum EvidenceCrypto {
+/// Seals everything the Mac and phone exchange. The key never leaves either device:
+/// the phone learns the secret from the QR code's URL fragment.
+public enum LinkCrypto {
     private static func key(for secret: String) -> SymmetricKey {
-        SymmetricKey(data: SHA256.hash(data: Data(("crookcooked-evidence:" + secret).utf8)))
+        SymmetricKey(data: SHA256.hash(data: Data(("crookcooked-link:" + secret).utf8)))
     }
 
+    /// Returns CryptoKit's combined form: 12-byte nonce, ciphertext, 16-byte tag.
     public static func seal(_ data: Data, secret: String) throws -> Data {
-        let box = try ChaChaPoly.seal(data, using: key(for: secret))
-        return box.combined
+        try ChaChaPoly.seal(data, using: key(for: secret)).combined
     }
 
     public static func open(_ data: Data, secret: String) throws -> Data {

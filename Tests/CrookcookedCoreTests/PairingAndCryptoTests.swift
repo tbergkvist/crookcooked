@@ -3,9 +3,9 @@ import Testing
 
 @testable import CrookcookedCore
 
-/// The pairing secret is the only thing standing between a stranger and the
-/// owner's evidence stream, so its derivation must be deterministic across the
-/// two devices and must not leak the secret itself.
+/// The pairing secret is the only thing standing between a stranger on the same
+/// network and the owner's evidence stream, so what is derived from it must be
+/// deterministic across the two devices and must not leak the secret itself.
 @Suite("Pairing secrets")
 struct PairingSecretTests {
     @Test("Generated secrets use the requested length")
@@ -51,45 +51,45 @@ struct PairingSecretTests {
         )
     }
 
-    @Test("The room ID is a stable SHA-256 digest")
-    func roomIDIsStable() {
-        let room = PairingSecret.roomID(from: "ABCDEFGHJKLMNPQR")
+    @Test("The access token is a stable SHA-256 digest")
+    func accessTokenIsStable() {
+        let token = PairingSecret.accessToken(from: "ABCDEFGHJKLMNPQR")
 
-        #expect(room.count == 64)
-        #expect(room.allSatisfy { $0.isHexDigit && !$0.isUppercase })
-        #expect(room == PairingSecret.roomID(from: "ABCDEFGHJKLMNPQR"))
+        #expect(token.count == 64)
+        #expect(token.allSatisfy { $0.isHexDigit && !$0.isUppercase })
+        #expect(token == PairingSecret.accessToken(from: "ABCDEFGHJKLMNPQR"))
     }
 
-    @Test("The room ID never contains the secret")
-    func roomIDDoesNotLeakSecret() {
+    @Test("The access token never contains the secret")
+    func accessTokenDoesNotLeakSecret() {
         let secret = "ABCDEFGHJKLMNPQR"
 
-        #expect(!PairingSecret.roomID(from: secret).contains(secret.lowercased()))
+        #expect(!PairingSecret.accessToken(from: secret).contains(secret.lowercased()))
     }
 
-    @Test("Different secrets route to different rooms")
-    func roomIDDiscriminates() {
-        #expect(PairingSecret.roomID(from: "AAAAAAAA") != PairingSecret.roomID(from: "AAAAAAAB"))
+    @Test("Different secrets get different access tokens")
+    func accessTokenDiscriminates() {
+        #expect(PairingSecret.accessToken(from: "AAAAAAAA") != PairingSecret.accessToken(from: "AAAAAAAB"))
     }
 }
 
-/// Evidence is end-to-end encrypted: the relay operator, including a hostile one,
-/// must never be able to open a frame.
-@Suite("Evidence encryption")
-struct EvidenceCryptoTests {
+/// Everything on the local network is sealed: anyone else on the same Wi-Fi,
+/// including a hostile one, must never be able to open a frame or forge a command.
+@Suite("Link encryption")
+struct LinkCryptoTests {
     private let secret = "ABCDEFGHJKLMNPQR"
     private let plaintext = Data("a still frame of whoever touched the Mac".utf8)
 
     @Test("Sealed evidence opens again with the same secret")
     func roundTrips() throws {
-        let sealed = try EvidenceCrypto.seal(plaintext, secret: secret)
+        let sealed = try LinkCrypto.seal(plaintext, secret: secret)
 
-        #expect(try EvidenceCrypto.open(sealed, secret: secret) == plaintext)
+        #expect(try LinkCrypto.open(sealed, secret: secret) == plaintext)
     }
 
     @Test("Sealed evidence does not contain the plaintext")
     func ciphertextHidesPlaintext() throws {
-        let sealed = try EvidenceCrypto.seal(plaintext, secret: secret)
+        let sealed = try LinkCrypto.seal(plaintext, secret: secret)
 
         #expect(sealed != plaintext)
         #expect(sealed.range(of: plaintext) == nil)
@@ -97,20 +97,20 @@ struct EvidenceCryptoTests {
 
     @Test("A wrong secret cannot open the evidence")
     func wrongSecretFails() throws {
-        let sealed = try EvidenceCrypto.seal(plaintext, secret: secret)
+        let sealed = try LinkCrypto.seal(plaintext, secret: secret)
 
         #expect(throws: (any Error).self) {
-            try EvidenceCrypto.open(sealed, secret: "RQPNMLKJHGFEDCBA")
+            try LinkCrypto.open(sealed, secret: "RQPNMLKJHGFEDCBA")
         }
     }
 
     @Test("Tampered ciphertext is rejected rather than silently decoded")
     func tamperingIsDetected() throws {
-        var sealed = try EvidenceCrypto.seal(plaintext, secret: secret)
+        var sealed = try LinkCrypto.seal(plaintext, secret: secret)
         sealed[sealed.count - 1] ^= 0xFF
 
         #expect(throws: (any Error).self) {
-            try EvidenceCrypto.open(sealed, secret: secret)
+            try LinkCrypto.open(sealed, secret: secret)
         }
     }
 
@@ -118,16 +118,16 @@ struct EvidenceCryptoTests {
     func sealingIsNonDeterministic() throws {
         // ChaChaPoly uses a fresh nonce per seal; identical output would let an
         // observer tell that nothing in view had changed.
-        let first = try EvidenceCrypto.seal(plaintext, secret: secret)
-        let second = try EvidenceCrypto.seal(plaintext, secret: secret)
+        let first = try LinkCrypto.seal(plaintext, secret: secret)
+        let second = try LinkCrypto.seal(plaintext, secret: secret)
 
         #expect(first != second)
     }
 
     @Test("Empty evidence round-trips")
     func handlesEmptyData() throws {
-        let sealed = try EvidenceCrypto.seal(Data(), secret: secret)
+        let sealed = try LinkCrypto.seal(Data(), secret: secret)
 
-        #expect(try EvidenceCrypto.open(sealed, secret: secret).isEmpty)
+        #expect(try LinkCrypto.open(sealed, secret: secret).isEmpty)
     }
 }

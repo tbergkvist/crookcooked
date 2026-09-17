@@ -13,7 +13,7 @@ body:
   - type: input
     id: system
     attributes:
-      label: macOS or iOS version
+      label: macOS version, and iPhone model and iOS version if the phone page is involved
     validations:
       required: true
   - type: textarea

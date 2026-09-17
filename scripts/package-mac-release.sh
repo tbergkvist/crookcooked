@@ -8,13 +8,13 @@ notary_profile="${NOTARY_KEYCHAIN_PROFILE:-}"
 
 UNIVERSAL_BUILD=1 "$project_dir/scripts/build-mac-app.sh"
 /bin/rm -f "$archive" "$checksum"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$project_dir/dist/Crookcooked.app" "$archive"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$project_dir/dist/crookcooked.app" "$archive"
 
 if [[ -n "$notary_profile" ]]; then
   /usr/bin/xcrun notarytool submit "$archive" --keychain-profile "$notary_profile" --wait
-  /usr/bin/xcrun stapler staple "$project_dir/dist/Crookcooked.app"
+  /usr/bin/xcrun stapler staple "$project_dir/dist/crookcooked.app"
   /bin/rm -f "$archive"
-  /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$project_dir/dist/Crookcooked.app" "$archive"
+  /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$project_dir/dist/crookcooked.app" "$archive"
 fi
 
 (cd "$project_dir/dist" && /usr/bin/shasum -a 256 "${archive:t}" > "${checksum:t}")

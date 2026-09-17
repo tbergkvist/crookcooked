@@ -14,7 +14,7 @@ struct CrookcookedApp: App {
         MenuBarExtra("crookcooked", systemImage: model.menuBarIcon) {
             VStack(alignment: .leading, spacing: 10) {
                 Label(model.statusLabel, systemImage: model.menuBarIcon)
-                Text(model.configuration.audibleAlarm ? "audible alarm enabled" : "silent by default")
+                Text(model.configuration.audibleAlarm ? "alarm will sound" : "quiet mode")
                     .font(.caption)
                 Divider()
                 if model.status == .disarmed {
@@ -34,7 +34,7 @@ struct CrookcookedApp: App {
                 Button("Quit crookcooked") {
                     NSApplication.shared.terminate(nil)
                 }
-                .keyboardShortcut("q", modifiers: [.command, .option])
+                .keyboardShortcut("q", modifiers: .command)
                 .disabled(model.status != .disarmed)
             }
         }

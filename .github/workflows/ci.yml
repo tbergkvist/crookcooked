@@ -13,21 +13,19 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - run: swift run CrookcookedCoreChecks
       - run: swift test
       - run: swift build --target CrookcookedMac
 
-  relay:
+  phone-web:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: relay
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: relay/package-lock.json
-      - run: npm ci
-      - run: npm test
+      - run: node --test Tests/PhoneWeb/*.test.mjs

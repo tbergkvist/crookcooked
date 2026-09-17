@@ -32,7 +32,6 @@ struct ConfigurationTests {
         #expect(safe.cameraMovementDetection)
         #expect(safe.faceAttentionWarning)
         #expect(safe.triggerThreshold == 70)
-        #expect(safe.relayURL == "ws://127.0.0.1:8787")
     }
 
     @Test("The lock screen avatar is on by default")
@@ -72,7 +71,7 @@ struct ConfigurationTests {
         #expect(decoded.lockScreenAvatar)
     }
 
-    @Test("Preferences written before faceAttentionWarning existed opt into it")
+    @Test("Preferences from older builds, including the removed relay URL, still decode")
     func legacyPayloadGainsNewDefault() throws {
         let legacy = #"{"audibleAlarm":false,"triggerThreshold":70,"armingDelaySeconds":8,"recordEvidence":true,"cameraMovementDetection":true,"relayURL":"ws://127.0.0.1:8787","pairingSecret":"OLDSECRET"}"#
 
@@ -100,7 +99,7 @@ struct ConfigurationTests {
     @Test("A missing pairing secret decodes to empty rather than a fresh one")
     func absentSecretDecodesEmpty() throws {
         // ConfigurationStore redacts the secret before writing to UserDefaults and
-        // restores it from the Keychain, so decoding must not invent a new one.
+        // restores it from its own file, so decoding must not invent a new one.
         let decoded = try JSONDecoder().decode(
             CrookcookedConfiguration.self,
             from: Data("{}".utf8)
@@ -124,7 +123,7 @@ struct ConfigurationTests {
     }
 }
 
-/// Threat kinds cross the wire between the Mac, the relay, and the phone.
+/// Threat kinds cross the wire between the Mac and the phone page.
 /// Renaming a raw value silently breaks every already-installed peer.
 @Suite("Threat kinds")
 struct ThreatKindTests {

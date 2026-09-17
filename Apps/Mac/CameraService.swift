@@ -10,8 +10,21 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     var onFrame: ((Data) -> Void)?
     var onEvidenceClip: ((Data) -> Void)?
     var onAttentionChange: ((Bool, Data?) -> Void)?
-    var movementDetectionEnabled = true
-    var streamingEnabled = false
+    /// Set from the main actor, read for every frame on the sample queue.
+    var movementDetectionEnabled: Bool {
+        get { sampleQueue.sync { movementDetection } }
+        set {
+            sampleQueue.async {
+                // A fresh reference each time watching starts, from wherever the Mac now sits.
+                if newValue && !self.movementDetection { self.resetMotionState() }
+                self.movementDetection = newValue
+            }
+        }
+    }
+    var streamingEnabled: Bool {
+        get { sampleQueue.sync { streaming } }
+        set { sampleQueue.async { self.streaming = newValue } }
+    }
     var latestFrame: Data? {
         sampleQueue.sync { evidenceFrameCache.latestFrame }
     }
@@ -22,8 +35,12 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     private let context = CIContext(options: [.cacheIntermediates: false])
     private let movieOutput = AVCaptureMovieFileOutput()
     private var configured = false
-    private var previousSignature: [UInt8]?
-    private var movementStreak = 0
+    private var movementDetection = true
+    private var streaming = false
+    private static let motionAnalysisSize = CGSize(width: 192, height: 144)
+    private var motionReference: (left: CGImage, right: CGImage)?
+    private var motionWarmup = 0
+    private var motionDetector = CameraMotionDetector()
     private var lastAnalysis = Date.distantPast
     private var evidenceFrameCache = EvidenceFrameCache()
     private var lastSample = Date.distantPast
@@ -58,8 +75,7 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
             if self.movieOutput.isRecording { self.movieOutput.stopRecording() }
             if self.session.isRunning { self.session.stopRunning() }
             self.sampleQueue.sync {
-                self.previousSignature = nil
-                self.movementStreak = 0
+                self.resetMotionState()
                 self.lastSample = .distantPast
                 self.evidenceFrameCache.reset()
             }
@@ -78,7 +94,7 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         sessionQueue.async { [weak self] in
             guard let self, self.session.isRunning, !self.movieOutput.isRecording else { return }
             let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("Crookcooked/Evidence", isDirectory: true)
+                .appendingPathComponent("crookcooked/Evidence", isDirectory: true)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let formatter = ISO8601DateFormatter()
             let name = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-") + ".mov"
@@ -115,11 +131,10 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         let now = Date()
         lastSample = now
 
-        if movementDetectionEnabled, now.timeIntervalSince(lastAnalysis) >= 0.7 {
+        if movementDetection, now.timeIntervalSince(lastAnalysis) >= 0.7 {
             lastAnalysis = now
             analyzeMovement(pixelBuffer)
         }
-
 
         if attentionDetectionEnabled, now.timeIntervalSince(lastAttentionAnalysis) >= 0.8 {
             lastAttentionAnalysis = now
@@ -127,7 +142,7 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         }
 
         let frameDisposition = EvidenceFramePolicy.disposition(
-            streamingEnabled: streamingEnabled,
+            streamingEnabled: streaming,
             secondsSinceLastRefresh: now.timeIntervalSince(evidenceFrameCache.refreshedAt)
         )
         if frameDisposition.refreshSnapshot, let jpeg = makeJPEG(pixelBuffer) {
@@ -185,24 +200,46 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         sampleQueue.sync { Date().timeIntervalSince(lastSample) <= interval }
     }
 
+    /// Compares side strips of the frame with the reference; see `CameraMotionDetector`.
     private func analyzeMovement(_ buffer: CVPixelBuffer) {
         let image = CIImage(cvPixelBuffer: buffer)
-        let extent = image.extent
-        let scaled = image.transformed(by: CGAffineTransform(scaleX: 16 / extent.width, y: 12 / extent.height))
-        var pixels = [UInt8](repeating: 0, count: 16 * 12 * 4)
-        context.render(scaled, toBitmap: &pixels, rowBytes: 16 * 4, bounds: CGRect(x: 0, y: 0, width: 16, height: 12), format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
-        let signature = stride(from: 0, to: pixels.count, by: 4).map { index -> UInt8 in
-            let total = Int(pixels[index]) + Int(pixels[index + 1]) + Int(pixels[index + 2])
-            return UInt8(total / 3)
+        let size = Self.motionAnalysisSize
+        let scaled = image.transformed(by: CGAffineTransform(scaleX: size.width / image.extent.width, y: size.height / image.extent.height))
+        let stripWidth = (size.width * 0.3).rounded()
+        guard let left = context.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: stripWidth, height: size.height)),
+              let right = context.createCGImage(scaled, from: CGRect(x: size.width - stripWidth, y: 0, width: stripWidth, height: size.height))
+        else { return }
+
+        // Let exposure and focus settle before choosing the reference.
+        motionWarmup += 1
+        guard motionWarmup > 2 else { return }
+        guard let reference = motionReference else {
+            motionReference = (left, right)
+            return
         }
-        defer { previousSignature = signature }
-        guard let previousSignature, previousSignature.count == signature.count else { return }
-        let averageDifference = zip(signature, previousSignature).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) } / signature.count
-        movementStreak = averageDifference > 24 ? movementStreak + 1 : 0
-        if movementStreak >= 2 {
-            movementStreak = 0
+
+        let moved = motionDetector.observe(
+            left: displacement(of: left, from: reference.left, frame: size),
+            right: displacement(of: right, from: reference.right, frame: size)
+        )
+        if moved {
+            motionReference = (left, right)
             onMovement?()
         }
+    }
+
+    private func displacement(of strip: CGImage, from reference: CGImage, frame: CGSize) -> CameraMotionDetector.Shift? {
+        let request = VNTranslationalImageRegistrationRequest(targetedCGImage: strip)
+        guard (try? VNImageRequestHandler(cgImage: reference).perform([request])) != nil,
+              let transform = request.results?.first?.alignmentTransform
+        else { return nil }
+        return .init(x: Double(transform.tx / frame.width), y: Double(transform.ty / frame.height))
+    }
+
+    private func resetMotionState() {
+        motionReference = nil
+        motionWarmup = 0
+        motionDetector.reset()
     }
 
     private func makeJPEG(_ buffer: CVPixelBuffer) -> Data? {

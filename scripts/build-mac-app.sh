@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_dir="${0:A:h}/.."
-app_dir="$project_dir/dist/Crookcooked.app"
+app_dir="$project_dir/dist/crookcooked.app"
 contents_dir="$app_dir/Contents"
 executable_dir="$contents_dir/MacOS"
 bundle_identifier="${BUNDLE_IDENTIFIER:-app.crookcooked.mac.local}"
@@ -34,6 +34,8 @@ else
 fi
 /bin/cp "Config/MacInfo.plist" "$contents_dir/Info.plist"
 /bin/cp "Config/AppIcon.icns" "$contents_dir/Resources/AppIcon.icns"
+/usr/bin/ditto "Apps/PhoneWeb" "$contents_dir/Resources/PhoneWeb"
+/usr/bin/find "$contents_dir/Resources/PhoneWeb" -name .DS_Store -delete
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $bundle_identifier" "$contents_dir/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$contents_dir/Info.plist"
 /usr/bin/codesign \

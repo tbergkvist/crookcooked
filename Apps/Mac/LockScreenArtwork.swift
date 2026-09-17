@@ -11,11 +11,24 @@ import Foundation
 /// Kept free of NSWorkspace and main-actor state so the artwork can be rendered
 /// and inspected on its own, without launching the app.
 enum LockScreenArtwork {
-    enum Variant: String {
+    enum Variant: String, Sendable {
         /// Armed and waiting. A warning.
         case armed
-        /// Something tripped. The warning has become a statement of fact.
-        case attention
+        /// Someone is looking at the Mac but has not touched it. Their photo is
+        /// shown; nothing sounds.
+        case watching
+        /// A tamper signal fired. The warning has become a statement of fact.
+        case triggered
+    }
+
+    /// Everything the words depend on.
+    struct Situation: Equatable, Sendable {
+        var variant: Variant
+        /// The owner's setting: whether a trigger sounds the siren.
+        var audibleAlarm: Bool
+        /// Whether the siren is sounding now. It can be silenced from the phone.
+        var alarmSounding: Bool
+        var showAvatar: Bool
     }
 
     enum Palette {
@@ -32,9 +45,7 @@ enum LockScreenArtwork {
     static func render(
         pixelWidth: Int,
         pixelHeight: Int,
-        variant: Variant,
-        audibleAlarm: Bool,
-        showAvatar: Bool = true,
+        situation: Situation,
         mugshot: Data?
     ) -> NSBitmapImageRep? {
         guard let bitmap = NSBitmapImageRep(
@@ -59,9 +70,7 @@ enum LockScreenArtwork {
         draw(
             width: CGFloat(pixelWidth),
             height: CGFloat(pixelHeight),
-            variant: variant,
-            audibleAlarm: audibleAlarm,
-            showAvatar: showAvatar,
+            situation: situation,
             mugshot: mugshot
         )
 
@@ -77,18 +86,17 @@ enum LockScreenArtwork {
         static let eyebrowBlock: CGFloat = 0.062
         static let headlineLine: CGFloat = 0.115
         static let headlineGap: CGFloat = 0.012
-        static let punchBlock: CGFloat = 0.082
+        static let punchLine: CGFloat = 0.040
+        static let punchGap: CGFloat = 0.030
         static let ruleBlock: CGFloat = 0.046
         static let factsBlock: CGFloat = 0.034
-        static let footerGap: CGFloat = 0.030
-        static let footerBlock: CGFloat = 0.034
         static let bottomPad: CGFloat = 0.040
 
-        static func railHeight(headlineLines: Int) -> CGFloat {
+        static func railHeight(headlineLines: Int, punchLines: Int) -> CGFloat {
             topPad + eyebrowBlock
                 + headlineLine * CGFloat(headlineLines) + headlineGap
-                + punchBlock + ruleBlock + factsBlock
-                + footerGap + footerBlock + bottomPad
+                + punchLine * CGFloat(punchLines) + punchGap + ruleBlock + factsBlock
+                + bottomPad
         }
     }
 
@@ -97,13 +105,13 @@ enum LockScreenArtwork {
     private static func draw(
         width: CGFloat,
         height: CGFloat,
-        variant: Variant,
-        audibleAlarm: Bool,
-        showAvatar: Bool,
+        situation: Situation,
         mugshot: Data?
     ) {
         let bounds = NSRect(x: 0, y: 0, width: width, height: height)
-        let accent = variant == .attention ? Palette.signalRed : Palette.deepRed
+        let variant = situation.variant
+        let copy = Copy(situation)
+        let accent = variant == .triggered ? Palette.signalRed : Palette.deepRed
 
         Palette.night.setFill()
         bounds.fill()
@@ -135,91 +143,91 @@ enum LockScreenArtwork {
         // everything here lives in a left rail that cannot collide with them.
         // Height is derived from the content rather than guessed per variant:
         // the triggered headline is a line shorter, and hard-coding the two sizes
-        // is how the footer ended up overlapping the line above it.
+        // is how text ended up overlapping the line above it.
         let railTop = height * 0.79
-        let railHeight = height * Layout.railHeight(headlineLines: variant == .armed ? 2 : 1)
+        let railHeight = height * Layout.railHeight(headlineLines: copy.headline.lineCount, punchLines: copy.punch.lineCount)
         let rail = NSRect(x: width * 0.055, y: railTop - railHeight, width: width * 0.36, height: railHeight)
         let railPath = NSBezierPath(roundedRect: rail, xRadius: width * 0.012, yRadius: width * 0.012)
         accent.setFill()
         railPath.fill()
 
-        if variant == .armed, showAvatar {
+        if variant == .armed, situation.showAvatar {
             drawHeroMark(width: width, height: height, accent: accent)
         }
 
-        drawRailContent(
-            rail: rail,
-            width: width,
-            height: height,
-            variant: variant,
-            audibleAlarm: audibleAlarm
-        )
+        drawRailContent(rail: rail, width: width, height: height, copy: copy)
 
-        if variant == .attention, let mugshot {
-            drawMugshot(mugshot, canvasWidth: width, canvasHeight: height)
+        if variant != .armed, let mugshot {
+            drawMugshot(mugshot, caption: copy.mugshotCaption, canvasWidth: width, canvasHeight: height)
         }
     }
 
-    private static func drawRailContent(
-        rail: NSRect,
-        width: CGFloat,
-        height: CGFloat,
-        variant: Variant,
-        audibleAlarm: Bool
-    ) {
+    /// The words for each situation. A stranger glances rather than reads, so
+    /// each line says one plain thing: what this is, what sets it off, what
+    /// already happened.
+    struct Copy: Equatable {
+        let eyebrow: String
+        let headline: String
+        let punch: String
+        let facts: String
+        let mugshotCaption: String
+
+        init(_ situation: Situation) {
+            let consequence = situation.audibleAlarm ? "the alarm goes off." : "the owner is alerted."
+            switch situation.variant {
+            case .armed:
+                eyebrow = "armed"
+                headline = "this mac\nis armed."
+                punch = "move it, type on it, or unplug it\nand \(consequence)"
+                facts = "camera on  \u{2022}  photos go to the owner"
+                mugshotCaption = ""
+            case .watching:
+                eyebrow = "you\u{2019}re on camera"
+                headline = "we see\nyou."
+                punch = "looking is fine. touch, move,\nor unplug it and \(consequence)"
+                facts = "camera on  \u{2022}  photos go to the owner"
+                mugshotCaption = "\u{25CF}  you, right now"
+            case .triggered:
+                eyebrow = situation.alarmSounding ? "alarm sounding" : "owner alerted"
+                headline = situation.alarmSounding ? "you\u{2019}re\ncooked." : "you\u{2019}re\ncaught."
+                punch = situation.alarmSounding
+                    ? "the alarm is on and your\nphoto has been taken."
+                    : "your photo has been taken\nand the owner alerted."
+                facts = "put it down and walk away"
+                mugshotCaption = "\u{25CF}  photo taken"
+            }
+        }
+    }
+
+    private static func drawRailContent(rail: NSRect, width: CGFloat, height: CGFloat, copy: Copy) {
         let inset = width * 0.024
         let content = rail.insetBy(dx: inset, dy: 0)
         var cursor = rail.maxY - height * Layout.topPad
 
-        let eyebrow: String
-        let headline: String
-        let headlineScale: CGFloat
-        let punch: String
-        let facts: String
-
-        switch variant {
-        case .armed:
-            eyebrow = "armed"
-            headline = "this mac\nis armed."
-            headlineScale = 0.050
-            // The line that does the actual deterring. Short enough to land in the
-            // second before someone decides whether to keep going.
-            punch = "touch it. get caught."
-            facts = audibleAlarm
-                ? "alarm  \u{2022}  photo  \u{2022}  sent to the owner"
-                : "silent alert  \u{2022}  photo  \u{2022}  sent to the owner"
-        case .attention:
-            eyebrow = "triggered"
-            headline = "cooked."
-            headlineScale = 0.062
-            punch = audibleAlarm ? "alarm on. photo sent." : "photo sent."
-            facts = "putting it back does not undo that"
-        }
-
         drawLogoLockup(
             in: NSRect(x: content.minX, y: cursor - height * 0.046, width: content.width, height: height * 0.046),
-            status: eyebrow,
+            status: copy.eyebrow,
             width: width
         )
         cursor -= height * Layout.eyebrowBlock
 
-        let lineCount = CGFloat(headline.components(separatedBy: "\n").count)
-        let headlineHeight = height * Layout.headlineLine * lineCount
+        let headlineHeight = height * Layout.headlineLine * CGFloat(copy.headline.lineCount)
         drawLeft(
-            headline,
+            copy.headline,
             in: NSRect(x: content.minX, y: cursor - headlineHeight, width: content.width, height: headlineHeight),
-            font: .systemFont(ofSize: width * headlineScale, weight: .black),
+            font: .systemFont(ofSize: width * 0.056, weight: .black),
             color: Palette.evidenceWhite
         )
         cursor -= headlineHeight + height * Layout.headlineGap
 
+        let punchHeight = height * Layout.punchLine * CGFloat(copy.punch.lineCount)
         drawLeft(
-            punch,
-            in: NSRect(x: content.minX, y: cursor - height * 0.052, width: content.width, height: height * 0.052),
-            font: .systemFont(ofSize: width * 0.0215, weight: .heavy),
-            color: Palette.evidenceWhite.withAlphaComponent(0.92)
+            copy.punch,
+            in: NSRect(x: content.minX, y: cursor - punchHeight, width: content.width, height: punchHeight),
+            font: .systemFont(ofSize: width * 0.0165, weight: .heavy),
+            color: Palette.evidenceWhite.withAlphaComponent(0.94)
         )
-        cursor -= height * Layout.punchBlock
+        cursor -= punchHeight + height * Layout.punchGap
 
         // One scannable strip instead of a bulleted list: a thief glances, they
         // do not read. The specifics still back up the threat.
@@ -232,20 +240,10 @@ enum LockScreenArtwork {
         cursor -= height * Layout.ruleBlock
 
         drawLeft(
-            facts,
+            copy.facts,
             in: NSRect(x: content.minX, y: cursor - height * Layout.factsBlock, width: content.width, height: height * Layout.factsBlock),
             font: .monospacedSystemFont(ofSize: width * 0.0118, weight: .bold),
             color: Palette.evidenceWhite.withAlphaComponent(0.88)
-        )
-        cursor -= height * (Layout.factsBlock + Layout.footerGap)
-
-        // Small, single line: says this is not the thing asking for a password,
-        // without turning the poster into a notice.
-        drawLeft(
-            "the password box is apple\u{2019}s. crookcooked never asks for it.",
-            in: NSRect(x: content.minX, y: cursor - height * Layout.footerBlock, width: content.width, height: height * Layout.footerBlock),
-            font: .systemFont(ofSize: width * 0.0092, weight: .medium),
-            color: Palette.evidenceWhite.withAlphaComponent(0.62)
         )
     }
 
@@ -291,8 +289,6 @@ enum LockScreenArtwork {
 
     // MARK: - Logo
 
-    /// The website's mark — a red blob with one sharp corner and two dot eyes —
-    /// beside the wordmark, followed by the current status.
     /// Wordmark and status only. The face lives once, out on the open field —
     /// repeating it at two sizes on one screen just weakened both.
     private static func drawLogoLockup(
@@ -335,10 +331,10 @@ enum LockScreenArtwork {
         NSGraphicsContext.saveGraphicsState()
         defer { NSGraphicsContext.restoreGraphicsState() }
 
-        // Tilt about the mark's own centre, as the CSS transform does.
+        // Tilt about the mark's own centre to match the CSS rotate(-7deg); AppKit is y-up, so the sign flips.
         let tilt = NSAffineTransform()
         tilt.translateX(by: rect.midX, yBy: rect.midY)
-        tilt.rotate(byDegrees: -7)
+        tilt.rotate(byDegrees: 7)
         tilt.translateX(by: -rect.midX, yBy: -rect.midY)
         tilt.concat()
 
@@ -474,7 +470,7 @@ enum LockScreenArtwork {
         )
     }
 
-    private static func drawMugshot(_ data: Data, canvasWidth width: CGFloat, canvasHeight height: CGFloat) {
+    private static func drawMugshot(_ data: Data, caption: String, canvasWidth width: CGFloat, canvasHeight height: CGFloat) {
         guard let image = NSImage(data: data), image.size.width > 0, image.size.height > 0 else { return }
 
         // Right-side rail: clear of Apple's clock, password tile, and the
@@ -524,10 +520,14 @@ enum LockScreenArtwork {
         )
 
         drawLeft(
-            "\u{25CF}  sent to the owner",
+            caption,
             in: NSRect(x: panel.minX + pad, y: panel.minY + height * 0.017, width: panel.width - pad * 2, height: height * 0.035),
             font: .monospacedSystemFont(ofSize: width * 0.0085, weight: .bold),
             color: Palette.signalRed
         )
     }
+}
+
+private extension String {
+    var lineCount: Int { components(separatedBy: "\n").count }
 }

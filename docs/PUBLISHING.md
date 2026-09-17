@@ -8,6 +8,6 @@ The repository is prepared locally. Before announcing it:
 - Protect `main` and require the CI checks.
 - Review the MIT copyright line and the public project name.
 - Create a signed and notarized `vX.Y.Z` release if you want normal double-click installation; otherwise the documented Control-click flow applies.
-- Open the deployed project page and test the download on both an Apple silicon and Intel Mac.
+- Open the deployed project page and test the download on both an Apple silicon and Intel Mac, including pairing an iPhone on home Wi-Fi and over Personal Hotspot.
 
 No publishing, external account changes, signing, or notarization is performed automatically from this worktree.

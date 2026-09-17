@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#100807">
+    <meta name="referrer" content="no-referrer">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="crookcooked">
+    <title>crookcooked</title>
+    <link rel="icon" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="app.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <strong>crookcooked</strong>
+      <span class="connection" data-connection>connecting…</span>
+    </header>
+
+    <main>
+      <section class="card" data-unpaired hidden>
+        <h1>Scan the code on your Mac</h1>
+        <p class="lede">Open crookcooked on your Mac, point the iPhone Camera app at the QR code, and tap the link. Nothing to install.</p>
+      </section>
+
+      <section class="card status" data-paired hidden>
+        <p class="eyebrow">your mac</p>
+        <h1 data-status>connecting…</h1>
+        <p class="detail" data-detail>Looking for your Mac on this network.</p>
+        <button class="primary" data-action="silence" hidden>Silence Mac alarm</button>
+        <button class="primary" data-action="toggle-arm" disabled>Arm</button>
+        <p class="verify">verify code <strong data-verify>——</strong><span>must match your Mac</span></p>
+      </section>
+
+      <section class="card watch" data-paired hidden>
+        <div class="row">
+          <div>
+            <p class="eyebrow">watch mode</p>
+            <p class="watch-state" data-watch-state>Off</p>
+          </div>
+          <button data-action="toggle-watch">Start watching</button>
+        </div>
+        <p class="lede small">Keeps this screen on and sounds an alarm here if your Mac is touched — or if it goes silent while armed. Keep the page open; iPhone pauses web pages when the screen locks.</p>
+        <video class="keep-awake" data-keep-awake src="keep-awake.mp4" muted playsinline loop aria-hidden="true"></video>
+      </section>
+
+      <section class="card" data-paired hidden>
+        <div class="row">
+          <p class="eyebrow">camera</p>
+          <div class="buttons">
+            <button data-action="toggle-stream" disabled>Live view</button>
+            <button data-action="snapshot" disabled>Snapshot</button>
+          </div>
+        </div>
+        <div class="frame">
+          <img data-frame alt="Latest camera frame from your Mac" hidden>
+          <p data-frame-empty>No camera frame yet.</p>
+        </div>
+      </section>
+
+      <section class="card" data-clip hidden>
+        <p class="eyebrow">latest evidence clip</p>
+        <video data-clip-video controls playsinline></video>
+        <a class="download" data-clip-download download="crookcooked-evidence.mov">Save clip</a>
+      </section>
+
+      <section class="card" data-paired hidden>
+        <p class="eyebrow">alerts</p>
+        <ol class="alerts" data-alerts></ol>
+        <p class="empty" data-alerts-empty>No alerts yet.</p>
+      </section>
+
+      <section class="card help" data-unreachable hidden>
+        <p class="eyebrow">can't reach your mac?</p>
+        <p class="lede small">Your iPhone must be on the same Wi-Fi as the Mac, and the Mac must be awake with crookcooked open. Some café and hotel Wi-Fi keeps devices apart: turn on Personal Hotspot on this iPhone, join it from the Mac, and scan the new code.</p>
+      </section>
+
+      <p class="footnote" data-paired hidden>
+        Everything between your Mac and this phone is encrypted with the code you scanned.
+        <button class="link" data-action="forget">Forget this Mac</button>
+      </p>
+    </main>
+
+    <div class="banner notice" data-notice hidden role="status"></div>
+
+    <div class="banner alarm" data-alarm hidden role="alert">
+      <strong data-alarm-title>Alert</strong>
+      <button data-action="dismiss-alarm">Dismiss</button>
+    </div>
+  </body>
+</html>

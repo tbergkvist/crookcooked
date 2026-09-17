@@ -12,7 +12,7 @@ final class CrookcookedController {
     private let sensors = SensorHub()
     private let camera = CameraService()
     private let alarm = AlarmService()
-    private let relay = RelayClient(role: .mac)
+    private let phoneLink: PhoneLinkServer
     private let systemLock = SystemLockService()
     private let crookcookedWallpaper = CrookcookedWallpaperService()
     private let displayWake = DisplayWakeService()
@@ -21,65 +21,73 @@ final class CrookcookedController {
         self.model = model
         self.configuration = configuration
         self.scorer = ThreatScorer(threshold: configuration.triggerThreshold)
+        self.phoneLink = PhoneLinkServer(secret: configuration.pairingSecret)
         crookcookedWallpaper.setAudibleAlarm(configuration.audibleAlarm)
         crookcookedWallpaper.setShowAvatar(configuration.lockScreenAvatar)
-        let wallpaperReady = crookcookedWallpaper.prepare()
+        crookcookedWallpaper.prepare()
         model.securityState = systemLock.nativeServiceAvailable
             ? "Native Apple login service available; lock verification ready"
             : "Native service unavailable; Accessibility shortcut required"
-        if !wallpaperReady {
-            model.securityState += " • crookcooked lock-screen artwork failed"
-        }
 
         sensors.onEvent = { [weak model] event in
             Task { @MainActor in model?.receiveSensorEvent(event) }
         }
         camera.onMovement = { [weak model] in
             Task { @MainActor in
-                model?.receiveSensorEvent(CrookcookedEvent(kind: .cameraMovement, detail: "The camera view changed while armed"))
+                model?.receiveSensorEvent(CrookcookedEvent(kind: .cameraMovement, detail: "The whole camera view shifted, so the Mac itself moved"))
             }
         }
         camera.onFrame = { [weak self] data in
-            Task { @MainActor in self?.relay.sendFrame(data) }
+            self?.phoneLink.sendFrame(data)
         }
         camera.onEvidenceClip = { [weak self] data in
-            Task { @MainActor in self?.relay.sendClip(data) }
+            self?.phoneLink.sendClip(data)
         }
+        // Someone looking is not tampering: show them their photo and tell the
+        // owner, but never sound the alarm for it.
         camera.onAttentionChange = { [weak self] detected, mugshot in
             Task { @MainActor in
-                guard let self, self.configuration.faceAttentionWarning else { return }
-                self.crookcookedWallpaper.setAttentionDetected(detected, mugshot: mugshot)
+                guard let self, self.configuration.faceAttentionWarning, self.model?.status == .armed else { return }
+                self.crookcookedWallpaper.show(detected ? .watching : .armed, mugshot: mugshot)
+                if detected {
+                    if let mugshot { self.phoneLink.sendFrame(mugshot) }
+                    self.phoneLink.sendNotice("Someone is in front of your Mac. Nothing has been touched.")
+                }
             }
         }
-        relay.onStateChange = { [weak model] value in
-            Task { @MainActor in model?.relayState = value }
+        phoneLink.onPairingLinkChange = { [weak model] link in
+            MainActor.assumeIsolated { model?.pairingLink = link }
         }
-        relay.onCommand = { [weak model] command in
-            Task { @MainActor in model?.handleRemoteCommand(command) }
+        phoneLink.onPhoneCountChange = { [weak model] count in
+            MainActor.assumeIsolated { model?.connectedPhones = count }
+        }
+        phoneLink.onCommand = { [weak model] command in
+            MainActor.assumeIsolated { model?.handleRemoteCommand(command) }
         }
         systemLock.onUnlock = { [weak self, weak model] in
             self?.crookcookedWallpaper.restore()
             guard let model, model.status == .armed || model.status == .triggered else { return }
             model.disarm()
         }
-        connectRelay()
+        phoneLink.start()
     }
 
     func apply(_ configuration: CrookcookedConfiguration) {
-        let reconnect = configuration.relayURL != self.configuration.relayURL ||
-            configuration.pairingSecret != self.configuration.pairingSecret
+        // A new scorer would forget signals already seen, so only replace it when it must change.
+        if configuration.triggerThreshold != self.configuration.triggerThreshold {
+            scorer = ThreatScorer(threshold: configuration.triggerThreshold)
+        }
         self.configuration = configuration
-        self.scorer = ThreatScorer(threshold: configuration.triggerThreshold)
-        camera.movementDetectionEnabled = configuration.cameraMovementDetection
+        let watching = model?.status == .armed || model?.status == .triggered
+        // While arming, detection stays off: the owner walking away must not count.
+        if watching { camera.movementDetectionEnabled = configuration.cameraMovementDetection }
         crookcookedWallpaper.setAudibleAlarm(configuration.audibleAlarm)
         crookcookedWallpaper.setShowAvatar(configuration.lockScreenAvatar)
-        let attentionEnabled = configuration.faceAttentionWarning &&
-            (model?.status == .armed || model?.status == .triggered)
-        camera.setAttentionDetectionEnabled(attentionEnabled)
+        camera.setAttentionDetectionEnabled(configuration.faceAttentionWarning && watching)
         if !configuration.faceAttentionWarning {
-            crookcookedWallpaper.setAttentionDetected(false, mugshot: nil)
+            crookcookedWallpaper.show(.armed, mugshot: nil)
         }
-        if reconnect { connectRelay() }
+        phoneLink.updateSecret(configuration.pairingSecret)
     }
 
     /// Reports what is already granted without prompting, so the owner can check
@@ -131,7 +139,7 @@ final class CrookcookedController {
 
     func lockAndVerify() async throws -> String {
         do {
-            try crookcookedWallpaper.activate()
+            try await crookcookedWallpaper.activate()
             model?.securityState = "crookcooked lock screen active • Requesting Apple lock screen"
             try? await Task.sleep(for: .milliseconds(900))
         } catch {
@@ -167,6 +175,7 @@ final class CrookcookedController {
         displayWake.stop()
         camera.streamingEnabled = false
         alarm.stop()
+        model?.alarmSounding = false
         crookcookedWallpaper.restore()
         Task { await scorer.reset() }
     }
@@ -182,34 +191,62 @@ final class CrookcookedController {
     }
 
     func trigger(_ event: CrookcookedEvent, audible: Bool) {
-        // This is the final safety gate: no sound API is called unless the owner
-        // explicitly enabled audible alarms in settings.
-        alarm.startIfAllowed(audible)
+        // The final safety gate: no sound API is called in quiet mode.
+        if audible { alarm.start() }
+        model?.alarmSounding = alarm.isSounding
+        let snapshot = camera.latestFrame
+        crookcookedWallpaper.setAlarmSounding(alarm.isSounding)
+        crookcookedWallpaper.show(.triggered, mugshot: snapshot)
         camera.streamingEnabled = true
         if configuration.recordEvidence { camera.recordEvidenceClip() }
-        relay.sendEvent(event, snapshot: camera.latestFrame)
+        phoneLink.sendEvent(event, snapshot: snapshot)
         sendStatus(.triggered)
+    }
+
+    /// Stops the siren without disarming: the Mac stays triggered and keeps
+    /// sending evidence.
+    func silenceAlarm() {
+        guard alarm.isSounding else { return }
+        alarm.stop()
+        model?.alarmSounding = false
+        crookcookedWallpaper.setAlarmSounding(false)
+        sendStatus(model?.status ?? .triggered)
     }
 
     func setStreaming(_ value: Bool) {
         camera.streamingEnabled = value
-        if value { camera.start() }
+        let armed = model?.status == .armed || model?.status == .triggered
+        if value {
+            camera.start()
+        } else if !armed {
+            // Live view was the only reason the camera was on.
+            camera.stop()
+        }
     }
 
     func sendSnapshot() {
-        guard let frame = camera.latestFrame else { return }
-        relay.sendFrame(frame)
+        guard let frame = camera.latestFrame else {
+            return phoneLink.sendNotice("No camera frame yet. The camera runs while the Mac is armed or live view is on.")
+        }
+        phoneLink.sendFrame(frame)
     }
 
     func sendStatus(_ status: CrookcookedStatus) {
-        relay.send(RelayMessage(type: .status, status: status))
+        let armed = status == .armed || status == .triggered
+        phoneLink.sendStatus(status, detail: armed ? model?.readiness?.summary : nil, alarmSounding: alarm.isSounding)
     }
 
-    private func connectRelay() {
-        guard let url = RelayEndpoint.validatedURL(from: configuration.relayURL) else {
-            model?.relayState = "Enter a ws:// or wss:// relay URL"
-            return
-        }
-        relay.connect(url: url, secret: configuration.pairingSecret)
+    func sendNotice(_ text: String) {
+        phoneLink.sendNotice(text)
+    }
+
+    /// What protection is available right now, without prompting for anything.
+    func readiness() -> ProtectionReadiness {
+        ProtectionReadiness(
+            inputMonitoring: CGPreflightListenEventAccess(),
+            cameraAccess: AVCaptureDevice.authorizationStatus(for: .video) == .authorized,
+            cameraFeaturesEnabled: configuration.cameraMovementDetection || configuration.recordEvidence || configuration.faceAttentionWarning,
+            canLockUnattended: systemLock.nativeServiceAvailable || AXIsProcessTrusted()
+        )
     }
 }

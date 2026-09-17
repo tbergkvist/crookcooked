@@ -9,7 +9,12 @@ final class AppModel: ObservableObject {
     }
     @Published var countdown = 0
     @Published var events: [CrookcookedEvent] = []
-    @Published var relayState = "Offline"
+    /// The link the QR code encodes, or nil while the Mac has no usable network.
+    @Published var pairingLink: String?
+    @Published var connectedPhones = 0
+    @Published var alarmSounding = false
+    /// What was actually watching when the Mac last armed.
+    @Published var readiness: ProtectionReadiness?
     @Published var cameraState = "Not requested"
     @Published var inputMonitoringState = "Permission required for global input"
     @Published var securityState = "Apple lock verification ready"
@@ -24,6 +29,7 @@ final class AppModel: ObservableObject {
     private let store = ConfigurationStore()
     private var controller: CrookcookedController!
     private var armingTask: Task<Void, Never>?
+    private static let alarmChoiceKey = "crookcooked.audibleAlarmChoice"
 
     init() {
         configuration = store.load()
@@ -35,14 +41,12 @@ final class AppModel: ObservableObject {
         controller = CrookcookedController(model: self, configuration: configuration)
     }
 
-    private static let alarmChoiceKey = "crookcooked.audibleAlarmChoice"
-
     var statusLabel: String {
         switch status {
         case .disarmed: return "disarmed"
         case .arming: return "arming in \(countdown)s"
-        case .armed: return "watching your Mac"
-        case .triggered: return configuration.audibleAlarm ? "alarm sounding" : "silent alert sent"
+        case .armed: return readiness?.isComplete == false ? "watching, with gaps" : "watching your Mac"
+        case .triggered: return alarmSounding ? "alarm sounding" : "alert sent"
         }
     }
 
@@ -57,17 +61,12 @@ final class AppModel: ObservableObject {
 
     var pairingCode: String { PairingSecret.displayCode(from: configuration.pairingSecret) }
 
-    var pairingPayload: PairingPayload {
-        PairingPayload(relayURL: configuration.relayURL, secret: configuration.pairingSecret)
-    }
-
-    /// The relay reports "iPhone connected" only while a phone is in the room;
-    /// "Connected; waiting for iPhone" must not count.
-    var isPhonePaired: Bool { relayState == "iPhone connected" }
+    var isPhoneConnected: Bool { connectedPhones > 0 }
 
     func copyPairingLink() {
+        guard let pairingLink else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(pairingPayload.encoded, forType: .string)
+        NSPasteboard.general.setString(pairingLink, forType: .string)
     }
 
     func arm() {
@@ -75,6 +74,7 @@ final class AppModel: ObservableObject {
         status = .arming
         countdown = max(1, configuration.armingDelaySeconds)
         controller.preparePermissions()
+        controller.sendStatus(.arming)
         armingTask?.cancel()
         armingTask = Task { [weak self] in
             guard let self else { return }
@@ -92,6 +92,7 @@ final class AppModel: ObservableObject {
         do {
             let method = try await controller.lockAndVerify()
             guard status == .arming else { return }
+            readiness = controller.readiness()
             status = .armed
             securityState = "Locked and verified via \(method)"
             controller.startArmed()
@@ -100,6 +101,8 @@ final class AppModel: ObservableObject {
             securityState = error.localizedDescription
             status = .disarmed
             controller.stopArmed()
+            controller.sendStatus(.disarmed)
+            controller.sendNotice("Not armed: \(error.localizedDescription)")
         }
     }
 
@@ -146,18 +149,18 @@ final class AppModel: ObservableObject {
         configuration.pairingSecret = PairingSecret.generate()
     }
 
-    func copyPairingSecret() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(configuration.pairingSecret, forType: .string)
-    }
-
     func handleRemoteCommand(_ command: RemoteCommand) {
         switch command {
-        case .arm: arm()
+        case .arm:
+            guard status == .disarmed else { return controller.sendStatus(status) }
+            // Arming from the phone must not wait for a key press nobody is there to make.
+            if let refusal = controller.readiness().remoteArmRefusal { return controller.sendNotice(refusal) }
+            arm()
         case .disarm: disarm()
         case .startStream: controller.setStreaming(true)
         case .stopStream: controller.setStreaming(false)
         case .requestSnapshot: controller.sendSnapshot()
+        case .silenceAlarm: controller.silenceAlarm()
         }
     }
 }

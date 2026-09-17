@@ -1,5 +1,5 @@
 // Renders the crookcooked app icon — the website's blob mark on a night tile —
-// into Config/AppIcon.icns plus PNGs for the website and phone web client.
+// into Config/AppIcon.icns plus PNGs for the website and the phone page.
 //
 //   swift scripts/make-app-icon.swift
 import AppKit
@@ -97,8 +97,7 @@ precondition(iconutil.terminationStatus == 0, "iconutil failed")
 try render(pixels: 1024, macTile: true).write(to: root.appendingPathComponent("Config/AppIcon-1024.png"))
 try render(pixels: 180, macTile: false).write(to: root.appendingPathComponent("website/apple-touch-icon.png"))
 try render(pixels: 64, macTile: true).write(to: root.appendingPathComponent("website/favicon.png"))
-try fm.createDirectory(at: root.appendingPathComponent("relay/public"), withIntermediateDirectories: true)
-try render(pixels: 180, macTile: false).write(to: root.appendingPathComponent("relay/public/apple-touch-icon.png"))
-try render(pixels: 512, macTile: false).write(to: root.appendingPathComponent("relay/public/icon-512.png"))
-try render(pixels: 64, macTile: true).write(to: root.appendingPathComponent("relay/public/favicon.png"))
+try render(pixels: 180, macTile: false).write(to: root.appendingPathComponent("Apps/PhoneWeb/apple-touch-icon.png"))
+try render(pixels: 512, macTile: false).write(to: root.appendingPathComponent("Apps/PhoneWeb/icon-512.png"))
+try render(pixels: 64, macTile: true).write(to: root.appendingPathComponent("Apps/PhoneWeb/favicon.png"))
 print("Wrote Config/AppIcon.icns and web icons")
