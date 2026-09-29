@@ -1,159 +1,54 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#f23e32">
-    <meta name="description" content="Open-source tamper deterrence and encrypted evidence for Mac and iPhone.">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="crookcooked — your Mac, armed.">
-    <meta property="og:description" content="Open-source tamper deterrence and encrypted evidence for Mac and iPhone.">
-    <meta property="og:image" content="og-crookcooked-v3.png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="og-crookcooked-v3.png">
-    <title>crookcooked — your Mac, armed.</title>
-    <link rel="icon" href="favicon.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css">
-    <script src="site-config.js"></script>
-    <script src="site.js" defer></script>
-  </head>
-  <body>
-    <a class="skip-link" href="#main">Skip to content</a>
-
-    <header class="site-header">
-      <a class="brand" href="#top" aria-label="crookcooked home">
-        <span class="brand-mark" aria-hidden="true"><span></span></span>
-        <span>crookcooked</span>
-      </a>
-      <nav aria-label="Main navigation">
-        <a href="#how">How it works</a>
-        <a href="#trust">Trust</a>
-        <a href="#install">Install</a>
-      </nav>
-      <a class="button button-small download-link" href="#install">Download for Mac</a>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Give your Mac the ability to protect itself against theft!">
+  <title>crookcooked</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="blob" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span></div>
+      <h1>crookcooked</h1>
+      <p class="intro">Give your Mac the ability to protect itself against theft!</p>
+      <div class="links">
+        <a class="download" href="https://github.com/tbergkvist/crookcooked/releases/latest/download/crookcooked-mac.zip">Download for macOS <span aria-hidden="true">↓</span></a>
+        <a href="https://github.com/tbergkvist/crookcooked">GitHub ↗</a>
+      </div>
+      <p class="requirement">macOS 14 or newer · ZIP</p>
     </header>
-
-    <main id="main">
-      <section class="hero" id="top">
-        <div class="hero-copy">
-          <p class="open-source-label">100% open source</p>
-          <h1>Your Mac, armed.<br><em>The crook? cooked.</em></h1>
-          <p class="hero-lede">
-            Arm your Mac before stepping away. If someone tries to move or use it,
-            crookcooked can make it scream, record the thief, and send encrypted evidence
-            to your iPhone.
-          </p>
-          <div class="hero-actions">
-            <a class="button download-link" href="#install">Download for macOS <span aria-hidden="true">↓</span></a>
-            <a class="text-link source-link" href="#source">Explore the open-source code <span aria-hidden="true">↗</span></a>
-          </div>
-          <p class="requirements">Mac app: macOS 14+. iPhone: nothing to install — scan a code with the Camera app. Camera, Input Monitoring, and Accessibility permissions are explained before use.</p>
-        </div>
-
-        <div class="product-scene" role="img" aria-label="crookcooked armed status showing a tamper event and encrypted evidence sent to an iPhone">
-          <div class="scene-grid" aria-hidden="true"></div>
-          <div class="guard-card" aria-hidden="true">
-            <div class="guard-top"><span class="live-pill"><i></i> armed</span><span>14:32</span></div>
-            <div class="crook-stamp"><span>crook status</span><strong>cooked.</strong></div>
-            <div class="event-feed">
-              <p><span>power</span><strong>disconnected</strong><small>now</small></p>
-              <p><span>evidence</span><strong>encrypted</strong><small>sent →</small></p>
-            </div>
-          </div>
-          <div class="phone-ping" aria-hidden="true"><span>sent to iphone</span><strong>proof, not panic.</strong></div>
-          <div class="scene-caption"><span></span> real apple lock screen · local detection</div>
-        </div>
-      </section>
-
-      <section class="proof-strip" aria-label="Privacy facts">
-        <p><strong>Real lock screen</strong><span>No imitation login UI</span></p>
-        <p><strong>On-device detection</strong><span>No cloud vision</span></p>
-        <p><strong>No microphone</strong><span>Video-only evidence</span></p>
-        <p><strong>MIT licensed</strong><span>Inspect every claim</span></p>
-      </section>
-
-      <section class="section signals" id="how">
-        <div class="section-intro">
-          <h2>Four signals.<br>One clear response.</h2>
-          <p>When armed, crookcooked watches for the Mac being moved, input, charger removal, and new USB devices. Just looking at it sets off nothing.</p>
-        </div>
-        <ol class="signal-list">
-          <li><span class="signal-number">01</span><div><strong>Moved</strong><p>The whole camera view shifts because the Mac was picked up or turned.</p></div><span class="signal-glyph" aria-hidden="true">⌁</span></li>
-          <li><span class="signal-number">02</span><div><strong>Keyboard or pointer</strong><p>Input while the Mac should be left alone.</p></div><span class="signal-glyph" aria-hidden="true">⌁</span></li>
-          <li><span class="signal-number">03</span><div><strong>Power removed</strong><p>The charging cable is disconnected.</p></div><span class="signal-glyph" aria-hidden="true">⌁</span></li>
-          <li><span class="signal-number">04</span><div><strong>New USB device</strong><p>Something unfamiliar is attached.</p></div><span class="signal-glyph" aria-hidden="true">⌁</span></li>
-        </ol>
-      </section>
-
-      <section class="response">
-        <div class="response-copy">
-          <h2>Deter. Capture. Alert.</h2>
-          <p>The locked Mac shows a warning, captures a fresh encrypted still and optional 12-second video-only clip, then sends it to the paired phone.</p>
-          <p class="fine-print">The alarm is loud by default. Quiet mode still records evidence and still alerts your iPhone.</p>
-        </div>
-        <div class="response-flow" aria-label="Response sequence">
-          <div><span>1</span><strong>Deter</strong><small>Visible lock-screen warning</small></div>
-          <div><span>2</span><strong>Capture</strong><small>Fresh still + optional clip</small></div>
-          <div><span>3</span><strong>Alert</strong><small>Encrypted evidence on iPhone</small></div>
-        </div>
-      </section>
-
-      <section class="section trust" id="trust">
-        <div class="section-intro">
-          <h2>Security claims you can verify.</h2>
-          <p>The source, build scripts, phone page, and threat boundaries are public.</p>
-        </div>
-        <div class="trust-grid">
-          <article><span>01</span><h3>Apple handles login</h3><p>Arming completes only after macOS confirms its genuine lock state. There is no fake password screen.</p></article>
-          <article><span>02</span><h3>Vision stays local</h3><p>Movement and face detection use Apple frameworks on the Mac. There is no identity recognition.</p></article>
-          <article><span>03</span><h3>No server in the middle</h3><p>Your iPhone talks to your Mac directly over local Wi-Fi. Alerts, photos, and commands are encrypted with the code you scan.</p></article>
-          <article><span>04</span><h3>You control the noise</h3><p>The alarm is loud by default, because silence deters nobody. Quiet mode keeps every sensor and alert, without the siren.</p></article>
-        </div>
-      </section>
-
-      <section class="truth">
-        <div>
-          <h2>A deterrent.<br>Not a physical lock.</h2>
-        </div>
-        <div class="truth-copy">
-          <p>Someone can still close the lid, cut networking, power down, or damage the Mac. A watching iPhone raises its own alarm when the Mac goes silent, but cannot stop it. Keep Find My enabled and use a cable lock where appropriate.</p>
-          <p>Camera and recording laws vary. Use evidence capture only where lawful and provide any required notice.</p>
-        </div>
-      </section>
-
-      <section class="section install" id="install">
-        <div class="section-intro">
-          <h2>Download. Move. Open.</h2>
-          <p>The Mac app is free and open source. The current release is ad-hoc signed, so macOS asks you to approve the first launch.</p>
-        </div>
-        <ol class="install-steps">
-          <li><span>1</span><strong>Download</strong><p>Get the latest <code>crookcooked-mac.zip</code>.</p></li>
-          <li><span>2</span><strong>Move</strong><p>Unzip it and move <code>crookcooked.app</code> to Applications.</p></li>
-          <li><span>3</span><strong>Open once</strong><p>Control-click the app, choose <b>Open</b>, then confirm.</p></li>
-        </ol>
-        <div class="install-actions">
-          <a class="button download-link" href="#install">Download latest release <span aria-hidden="true">↓</span></a>
-          <a class="text-link source-link" href="#source">Review the source <span aria-hidden="true">↗</span></a>
-        </div>
-        <p class="install-note">To connect your iPhone, put it on the same Wi-Fi as the Mac and scan the code in crookcooked with the Camera app. No iPhone app, account, or server is needed.</p>
-      </section>
-
-      <section class="source" id="source">
-        <h2>Read it. Build it. Improve it.</h2>
-        <p>No account, analytics script, or closed service is required by this webpage.</p>
-        <a class="button button-inverse source-link" href="#source">Open GitHub <span aria-hidden="true">↗</span></a>
-        <p class="link-note" data-link-note>Repository links are filled automatically on GitHub Pages.</p>
-      </section>
-    </main>
-
+    <section aria-labelledby="features">
+      <h2 id="features">Features</h2>
+      <ul>
+        <li>Tamper detection while the Mac is locked, with an optional audible alarm.</li>
+        <li>Encrypted alerts, photos, and clips sent to your iPhone over the local network.</li>
+        <li>iPhone browser controls for arming, disarming, live view, and snapshots.</li>
+      </ul>
+    </section>
+    <section aria-labelledby="installation">
+      <h2 id="installation">Installation</h2>
+      <p>Unzip the download and move <code>crookcooked.app</code> to Applications.</p>
+      <p>Or just tell your agent to look at the repo and install it for you.</p>
+      <p>Build it yourself (Swift 6+): clone the repo and run <code>./scripts/build-mac-app.sh</code>. The app is in <code>dist/</code>.</p>
+    </section>
+    <section aria-labelledby="usage">
+      <h2 id="usage">Usage</h2>
+      <ol>
+        <li>Open crookcooked with your Mac and iPhone on the same network. Scan the QR code with the iPhone Camera app and check that the six-digit verify codes match.</li>
+        <li>On the iPhone, tap <strong>Start watching</strong> and keep the page open. On the Mac, choose <strong>arm &amp; lock</strong> and complete any required permission setup.</li>
+        <li>Tap <strong>Disarm</strong> on the iPhone or unlock macOS to stop protection. See <a href="https://github.com/tbergkvist/crookcooked/blob/main/docs/PHONE.md">iPhone connection</a> for pairing help and watch-mode limitations.</li>
+      </ol>
+    </section>
     <footer>
-      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><span></span></span><span>crookcooked</span></a>
-      <p>Built for short steps away. Designed for honest limits.</p>
-      <p><a href="privacy.html">Privacy</a> · <a class="source-link" href="#source">Source</a> · © <span id="year">2026</span></p>
+      <nav aria-label="Project links">
+        <a href="https://github.com/tbergkvist/crookcooked/blob/main/CONTRIBUTING.md">Contributing</a>
+        <a href="https://github.com/tbergkvist/crookcooked/blob/main/LICENSE">MIT</a>
+      </nav>
+      <p>If you like it, <a href="https://github.com/tbergkvist/crookcooked">star the repo</a>.</p>
     </footer>
-  </body>
+  </main>
+</body>
 </html>

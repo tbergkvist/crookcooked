@@ -1,7 +1,5 @@
-# Project website
+# Website
 
-This is a dependency-free static site deployed by `.github/workflows/pages.yml`.
-
-On GitHub Pages, repository and latest-release links are derived from the page URL. On a custom domain, set the full GitHub repository URL in `site-config.js`; `downloadURL` can optionally override the release asset.
-
-The expected release filename is `crookcooked-mac.zip`. The page makes no analytics or third-party script requests.
+Static page for GitHub Pages. Keep its text in sync with the root README.
+The download button links directly to `crookcooked-mac.zip` on the latest GitHub Release.
+The blob mirrors `Apps/Mac/WatchingBlob.swift` and respects reduced-motion preferences.

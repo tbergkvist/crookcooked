@@ -25,17 +25,11 @@ xcuserdata/
 *.keychain
 *.keychain-db
 
-# Release artifacts copied into the site by scripts/package-mac-release.sh
-website/downloads/*.zip
-website/downloads/*.sha256
-
 # Editor / local tooling
 .idea/
 .vscode/
 
-# Private agent workflow — owner-only, not part of the public project.
-# Commercial strategy, pricing, naming deliberation, internal QA reports,
-# the autonomous sprint contract, and the local agent harness config.
+# Local agent tooling and notes
 /agent-work/
 /AGENT_BOARD.md
 /AGENTS.md

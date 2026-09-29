@@ -1,5 +1,5 @@
-// Renders the crookcooked app icon — the website's blob mark on a night tile —
-// into Config/AppIcon.icns plus PNGs for the website and the phone page.
+// Renders the crookcooked app icon — a blob mark on a night tile —
+// into Config/AppIcon.icns plus PNGs for the app and the phone page.
 //
 //   swift scripts/make-app-icon.swift
 import AppKit
@@ -37,8 +37,8 @@ func render(pixels: Int, macTile: Bool) -> Data {
     NSGradient(colors: [ember, night])!.draw(in: tilePath, relativeCenterPosition: NSPoint(x: 0, y: -0.15))
     NSGraphicsContext.restoreGraphicsState()
 
-    // The blob: three round corners, one sharp at the bottom left, tilted like the CSS rotate(-7deg) (AppKit is y-up),
-    // with the eyes set high — the same proportions as `.brand-mark` on the site.
+    // The blob: three round corners, one sharp at the bottom left,
+    // tilted seven degrees (AppKit is y-up), with the eyes set high.
     let size = tile.width * 0.56
     let mark = NSRect(x: tile.midX - size / 2, y: tile.midY - size / 2 - tile.height * 0.01, width: size, height: size)
     let transform = NSAffineTransform()
@@ -95,9 +95,7 @@ iconutil.waitUntilExit()
 precondition(iconutil.terminationStatus == 0, "iconutil failed")
 
 try render(pixels: 1024, macTile: true).write(to: root.appendingPathComponent("Config/AppIcon-1024.png"))
-try render(pixels: 180, macTile: false).write(to: root.appendingPathComponent("website/apple-touch-icon.png"))
-try render(pixels: 64, macTile: true).write(to: root.appendingPathComponent("website/favicon.png"))
 try render(pixels: 180, macTile: false).write(to: root.appendingPathComponent("Apps/PhoneWeb/apple-touch-icon.png"))
 try render(pixels: 512, macTile: false).write(to: root.appendingPathComponent("Apps/PhoneWeb/icon-512.png"))
 try render(pixels: 64, macTile: true).write(to: root.appendingPathComponent("Apps/PhoneWeb/favicon.png"))
-print("Wrote Config/AppIcon.icns and web icons")
+print("Wrote Config/AppIcon.icns, Config/AppIcon-1024.png, and phone icons")

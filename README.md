@@ -1,24 +1,37 @@
+<img src="Config/AppIcon-1024.png" alt='crookcooked icon' width='128'>
+
 # crookcooked
 
-Open-source tamper deterrence for macOS, with encrypted alerts and camera evidence on your iPhone. While the genuine macOS lock screen is active, it watches for keyboard and trackpad input, charger removal, new USB devices, and the Mac being moved (seen as the whole camera view shifting). Someone merely looking at the Mac is shown their photo on the lock screen but does not set off the alarm. The microphone is never used. The alarm is loud by default, forced to the built-in speakers at full volume, and can be silenced from the phone; quiet mode keeps every sensor running and sends the alert silently.
+Give your Mac the ability to protect itself against theft!
 
-## Install
+## Features
 
-Download the latest `crookcooked-mac.zip` from [Releases](../../releases/latest), unzip it, move `crookcooked.app` to Applications, then Control-click it and choose **Open** the first time. macOS 14 or newer is required.
+- Tamper detection while the Mac is locked, with an optional audible alarm.
+- Encrypted alerts, photos, and clips sent to your iPhone over the local network.
+- iPhone browser controls for arming, disarming, live view, and snapshots.
 
-## Connect your iPhone
+## Installation
 
-With the iPhone on the same Wi-Fi as the Mac, point the iPhone Camera app at the QR code in crookcooked and tap the link. There is no iPhone app, account, or server: the Mac serves the phone page itself, and everything after the page loads is encrypted with the secret in the QR code. See [`docs/PHONE.md`](docs/PHONE.md) for how it works and what to do on Wi-Fi that keeps devices apart.
+Requires macOS 14 or newer.
 
-## Develop
+Download `crookcooked-mac.zip` from [GitHub Releases](https://github.com/tbergkvist/crookcooked/releases/latest), unzip it, and move `crookcooked.app` to Applications.
 
-```sh
-swift run CrookcookedCoreChecks
-swift test
-swift build --target CrookcookedMac
-node --test Tests/PhoneWeb/*.test.mjs
-```
+Or just tell your agent to look at the repo and install it for you.
 
-Run `./scripts/build-mac-app.sh` for a local app in `dist/` or `./scripts/package-mac-release.sh` for the release ZIP. Release steps are in [`docs/RELEASING.md`](docs/RELEASING.md).
+Build it yourself (Swift 6+): clone the repo and run `./scripts/build-mac-app.sh`. The app is in `dist/`.
 
-This is a deterrence and evidence tool, not a physical lock; [`SECURITY.md`](SECURITY.md) describes its limits. Licensed under [MIT](LICENSE).
+## Usage
+
+1. Open crookcooked with your Mac and iPhone on the same network. Scan the QR code with the iPhone Camera app and check that the six-digit verify codes match.
+2. On the iPhone, tap **Start watching** and keep the page open. On the Mac, choose **arm & lock** and complete any required permission setup.
+3. Tap **Disarm** on the iPhone or unlock macOS to stop protection. See [iPhone connection](docs/PHONE.md) for pairing help and watch-mode limitations.
+
+## Contributing
+
+See [contributor documentation](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE).
+
+If you like it, star the repo.
