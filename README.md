@@ -16,6 +16,8 @@ Requires macOS 14 or newer.
 
 Download `crookcooked-mac.zip` from [GitHub Releases](https://github.com/tbergkvist/crookcooked/releases/latest), unzip it, and move `crookcooked.app` to Applications.
 
+The app isn't notarized by Apple. After trying to open it, go to **System Settings → Privacy & Security → Open Anyway**, if you trust the download.
+
 Or just tell your agent to look at the repo and install it for you.
 
 Build it yourself (Swift 6+): clone the repo and run `./scripts/build-mac-app.sh`. The app is in `dist/`.
@@ -35,3 +37,5 @@ See [contributor documentation](CONTRIBUTING.md).
 [MIT](LICENSE).
 
 If you like it, star the repo.
+
+Mostly vibe coded. Use at your own risk.
